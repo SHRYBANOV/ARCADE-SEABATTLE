@@ -299,10 +299,10 @@
     let explosions = [];
 
     const SHIP_TYPES = [
-      { type: 'submarine', width: 70, height: 14, speedBase: 2.2, points: 30 },
-      { type: 'destroyer', width: 125, height: 28, speedBase: 1.5, points: 20 },
-      { type: 'cargo', width: 155, height: 32, speedBase: 1.0, points: 15 },
-      { type: 'battleship', width: 200, height: 42, speedBase: 0.7, points: 10 }
+      { type: 'submarine', width: 70, speedBase: 2.2, points: 30 },
+      { type: 'destroyer', width: 120, speedBase: 1.5, points: 20 },
+      { type: 'cargo', width: 150, speedBase: 1.0, points: 15 },
+      { type: 'battleship', width: 190, speedBase: 0.7, points: 10 }
     ];
 
     function resize() {
@@ -312,25 +312,22 @@
     }
     window.addEventListener('resize', resize);
 
-    // Вспомогательный метод правильного рисования контура (без багов Canvas)
-    function drawPoly(points, fill = true, stroke = false) {
+    // Функция отрисовки закрашенного полигона
+    function drawPoly(pts) {
       ctx.beginPath();
-      ctx.moveTo(points[0][0], points[0][1]);
-      for (let i = 1; i < points.length; i++) {
-        ctx.lineTo(points[i][0], points[i][1]);
-      }
+      ctx.moveTo(pts[0][0], pts[0][1]);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
       ctx.closePath();
-      if (fill) ctx.fill();
-      if (stroke) ctx.stroke();
+      ctx.fill();
+      ctx.stroke();
     }
 
-    // ─── РЕАЛИСТИЧНЫЕ ЧЁРНЫЕ СИЛУЭТЫ КОРАБЛЕЙ ───
+    // ─── ЧЕТКИЕ БЕЗБАГОВЫЕ ЧЕРТЕЖИ КОРАБЛЕЙ ───
     class Ship {
       constructor() {
         let template = SHIP_TYPES[Math.floor(Math.random() * SHIP_TYPES.length)];
         this.type = template.type;
         this.width = template.width;
-        this.height = template.height;
         this.points = template.points;
         this.direction = Math.random() > 0.5 ? 1 : -1;
         this.speed = (template.speedBase + Math.random() * 0.3) * this.direction;
@@ -349,141 +346,120 @@
 
       draw() {
         const sx = this.x - cameraX + w/2;
-        const dir = this.direction;
-        const sy = this.y; // Водная линия
-        
-        ctx.save();
+        const sy = this.y;
+        const hw = this.width / 2;
 
-        // 1. Пенная волна у носа и след за кормой
+        ctx.save();
+        
+        // Переносим систему координат в центр корабля на ватерлинию
+        ctx.translate(sx, sy);
+        // Зеркально отражаем по X, если корабль плывет влево (direction = -1)
+        ctx.scale(this.direction, 1);
+
+        // 1. Пенная волна за кормой
         ctx.strokeStyle = 'rgba(180, 240, 230, 0.45)';
         ctx.lineWidth = 1.2;
         ctx.beginPath();
-        const wakeLen = this.width * 0.6;
-        ctx.moveTo(sx - (this.width/2) * dir, sy + 1);
-        ctx.lineTo(sx - (this.width/2 + wakeLen) * dir, sy + 3 + Math.sin(this.wakeFrame) * 1.2);
+        ctx.moveTo(-hw, 1);
+        ctx.lineTo(-hw - hw * 0.7, 3 + Math.sin(this.wakeFrame) * 1.2);
         ctx.stroke();
 
-        // Носовой ус (бурун)
+        // Бурун у носа
         ctx.beginPath();
-        ctx.moveTo(sx + (this.width/2) * dir, sy + 1);
-        ctx.lineTo(sx + (this.width/2 - 12) * dir, sy + 3);
+        ctx.moveTo(hw, 1);
+        ctx.lineTo(hw - 10, 3);
         ctx.stroke();
 
-        // 2. Силуэт корабля (тёмно-угольный)
+        // 2. Силуэт корабля (Все детали рисуются СТРОГО СПРАВА НАЛЕВО, смотреть ВПРАВО)
         ctx.fillStyle = '#0a1618';
         ctx.strokeStyle = '#020607';
         ctx.lineWidth = 1;
 
         if (this.type === 'submarine') {
           // ПОДВОДНАЯ ЛОДКА
-          const w2 = this.width / 2;
           drawPoly([
-            [sx - w2, sy],
-            [sx - w2 + 10, sy - 4],
-            [sx, sy - 7],
-            [sx + w2 - 8, sy - 4],
-            [sx + w2, sy],
-            [sx - w2, sy]
+            [-hw, 0],
+            [-hw + 8, -4],
+            [0, -7],
+            [hw - 8, -4],
+            [hw, 0]
           ]);
-          // Рубка
-          ctx.fillRect(sx - 8, sy - 13, 16, 7);
-          // Перископ
-          ctx.fillRect(sx + 2 * dir, sy - 20, 2, 8);
+          ctx.fillRect(-8, -13, 16, 7); // Рубка
+          ctx.fillRect(2, -21, 2, 9);   // Перископ
         } 
         else if (this.type === 'destroyer') {
           // ЭСМИНЕЦ
-          const w2 = this.width / 2;
-          // Корпус
           drawPoly([
-            [sx - w2, sy + 1],
-            [sx - w2 + 8, sy - 8],
-            [sx + w2 - 15 * dir, sy - 9],
-            [sx + w2, sy + 1]
+            [-hw, 0],
+            [-hw + 6, -8],
+            [hw - 12, -10],
+            [hw, 0]
           ]);
-          // Ходовой мостик (надстройка)
-          ctx.fillRect(sx - 15, sy - 18, 28, 10);
-          ctx.fillRect(sx - 8, sy - 25, 14, 7);
-          // Мачта с радаром
-          ctx.fillRect(sx - 1, sy - 38, 2, 13);
-          ctx.fillRect(sx - 6, sy - 35, 12, 2);
-          // Дымовая труба
-          drawPoly([
-            [sx - 24 * dir, sy - 9],
-            [sx - 21 * dir, sy - 20],
-            [sx - 13 * dir, sy - 20],
-            [sx - 16 * dir, sy - 9]
-          ]);
-          // Носовое орудие
-          ctx.fillRect(sx + 25 * dir - 5, sy - 14, 10, 5);
-          ctx.fillRect(sx + 25 * dir, sy - 12, 14 * dir, 2); // Ствол
-          // Кормовое орудие
-          ctx.fillRect(sx - 30 * dir - 5, sy - 13, 10, 5);
-          ctx.fillRect(sx - 30 * dir, sy - 11, -12 * dir, 2);
+          // Мостик
+          ctx.fillRect(-10, -19, 20, 10);
+          ctx.fillRect(-4, -26, 10, 7);
+          // Мачта / Радар
+          ctx.fillRect(0, -37, 2, 11);
+          ctx.fillRect(-5, -34, 10, 2);
+          // Скошенная труба
+          drawPoly([[-22, -9], [-19, -20], [-11, -20], [-14, -9]]);
+          // Носовое орудие (смотрит вправо)
+          ctx.fillRect(22, -15, 12, 5);
+          ctx.fillRect(34, -13, 12, 2); // Ствол
+          // Кормовое орудие (смотрит влево)
+          ctx.fillRect(-32, -14, 12, 5);
+          ctx.fillRect(-42, -12, 10, 2);
         }
         else if (this.type === 'cargo') {
           // ТРАНСПОРТ / ТАНКЕР
-          const w2 = this.width / 2;
-          // Корпус
           drawPoly([
-            [sx - w2, sy + 1],
-            [sx - w2 + 6, sy - 11],
-            [sx + w2 - 10 * dir, sy - 11],
-            [sx + w2, sy + 1]
+            [-hw, 0],
+            [-hw + 6, -11],
+            [hw - 10, -11],
+            [hw, 0]
           ]);
           // Носовой бак
-          ctx.fillRect(sx + (w2 - 22) * dir, sy - 16, 16, 5);
+          ctx.fillRect(hw - 22, -16, 18, 5);
           // Кормовая надстройка
-          const aftX = sx - (w2 - 28) * dir;
-          ctx.fillRect(aftX - 12, sy - 25, 24, 14);
-          ctx.fillRect(aftX - 4, sy - 35, 8, 10); // Труба
-          // Грузовые мачты и крановые стрелы
-          const m1 = sx + 8 * dir;
-          ctx.fillRect(m1 - 1, sy - 30, 2, 19);
-          ctx.beginPath();
-          ctx.moveTo(m1, sy - 24); ctx.lineTo(m1 + 14 * dir, sy - 15);
-          ctx.stroke();
-
-          const m2 = sx - 16 * dir;
-          ctx.fillRect(m2 - 1, sy - 30, 2, 19);
-          ctx.beginPath();
-          ctx.moveTo(m2, sy - 24); ctx.lineTo(m2 - 14 * dir, sy - 15);
-          ctx.stroke();
+          const aftX = -hw + 14;
+          ctx.fillRect(aftX, -25, 24, 14);
+          ctx.fillRect(aftX + 8, -35, 8, 10); // Труба
+          // Мачты и крановые стрелы
+          ctx.fillRect(10, -31, 2, 20);
+          ctx.beginPath(); ctx.moveTo(10, -25); ctx.lineTo(24, -16); ctx.stroke();
+          ctx.fillRect(-20, -31, 2, 20);
+          ctx.beginPath(); ctx.moveTo(-20, -25); ctx.lineTo(-34, -16); ctx.stroke();
         }
         else if (this.type === 'battleship') {
           // ЛИНКОР
-          const w2 = this.width / 2;
-          // Мощный корпус
           drawPoly([
-            [sx - w2, sy + 1],
-            [sx - w2 + 12, sy - 12],
-            [sx + w2 - 20 * dir, sy - 14],
-            [sx + w2, sy + 1]
+            [-hw, 0],
+            [-hw + 10, -12],
+            [hw - 16, -14],
+            [hw, 0]
           ]);
-          // Главная надстройка
-          ctx.fillRect(sx - 30, sy - 24, 58, 11);
-          ctx.fillRect(sx - 16, sy - 36, 32, 12);
-          ctx.fillRect(sx - 8, sy - 48, 16, 12);
-          // Дальномерный столб
-          ctx.fillRect(sx - 1, sy - 58, 2, 10);
-          ctx.fillRect(sx - 7, sy - 55, 14, 2);
-
+          // Главный броневой массив / Мостик
+          ctx.fillRect(-25, -25, 50, 12);
+          ctx.fillRect(-15, -38, 30, 13);
+          ctx.fillRect(-8, -50, 16, 12);
+          // Мачта дальномера
+          ctx.fillRect(-1, -62, 2, 12);
+          ctx.fillRect(-7, -59, 14, 2);
           // Две наклоненные трубы
-          drawPoly([[sx - 24*dir, sy-24], [sx - 21*dir, sy-34], [sx - 15*dir, sy-34], [sx - 18*dir, sy-24]]);
-          drawPoly([[sx - 36*dir, sy-24], [sx - 33*dir, sy-32], [sx - 27*dir, sy-32], [sx - 30*dir, sy-24]]);
+          drawPoly([[-24, -25], [-21, -35], [-15, -35], [-18, -25]]);
+          drawPoly([[-36, -25], [-33, -33], [-27, -33], [-30, -25]]);
 
-          // Носовые трёхснарядные башни ГК
-          const b1 = sx + 38 * dir;
-          ctx.fillRect(b1 - 8, sy - 20, 16, 6);
-          ctx.fillRect(b1, sy - 18, 22 * dir, 2); // Стволы ГК
+          // Башни главного калибра (Носовая верхняя)
+          ctx.fillRect(15, -21, 18, 7);
+          ctx.fillRect(33, -19, 20, 2); // Стволы ГК
 
-          const b2 = sx + 62 * dir;
-          ctx.fillRect(b2 - 8, sy - 18, 16, 5);
-          ctx.fillRect(b2, sy - 16, 20 * dir, 2);
+          // Носовая нижняя башня
+          ctx.fillRect(45, -19, 18, 6);
+          ctx.fillRect(63, -17, 20, 2);
 
-          // Кормовая башня
-          const b3 = sx - 55 * dir;
-          ctx.fillRect(b3 - 8, sy - 18, 16, 5);
-          ctx.fillRect(b3, sy - 16, -20 * dir, 2);
+          // Кормовая башня ГК (смотрит назад)
+          ctx.fillRect(-55, -19, 18, 6);
+          ctx.fillRect(-75, -17, 20, 2);
         }
 
         ctx.restore();
@@ -616,7 +592,7 @@
 
     function wrap(val, max) { return ((val % max) + max) % max; }
 
-    // ─── ОТРИСОВКА ОРИГИНАЛЬНОЙ ДИОРАМЫ (КАК НА ФОТО) ───
+    // ─── ОТРИСОВКА ОРИГИНАЛЬНОЙ ДИОРАМЫ ───
     function gameLoop() {
       if (state !== 'playing' && !activeTorpedo && explosions.length === 0) return;
       requestAnimationFrame(gameLoop);
@@ -674,7 +650,7 @@
         [rockLeftX + 90, HORIZON_Y - 70],
         [rockLeftX + 150, HORIZON_Y - 140],
         [rockLeftX + 220, HORIZON_Y]
-      ], true, true);
+      ]);
 
       // Скала СПРАВА
       let rockRightX = wrap(1700 - cameraX * 0.35, 2400) - 300;
@@ -684,7 +660,7 @@
         [rockRightX + 140, HORIZON_Y - 80],
         [rockRightX + 210, HORIZON_Y - 160],
         [rockRightX + 320, HORIZON_Y]
-      ], true, true);
+      ]);
 
       // 3. Бирюзовое море
       let seaGrad = ctx.createLinearGradient(0, HORIZON_Y, 0, h);
@@ -708,7 +684,7 @@
       ctx.strokeStyle = 'rgba(160, 230, 220, 0.6)';
       ctx.beginPath(); ctx.moveTo(0, HORIZON_Y); ctx.lineTo(w, HORIZON_Y); ctx.stroke();
 
-      // 4. Отрисовка кораблей (Они стоят СТРОГО на линии горизонта!)
+      // 4. Корабли
       ships.forEach(s => s.draw());
       
       // Торпеда
