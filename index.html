@@ -554,4 +554,189 @@
       sound.playStartJingle();
 
       document.getElementById('startOverlay').style.display = 'none';
-      score = 0; torpedoes = 
+      score = 0; torpedoes = 10; cameraX = 1500;
+      ships = []; explosions = []; activeTorpedo = null;
+      state = 'playing';
+      updateUI();
+      gameLoop();
+    }
+
+    function updateUI() {
+      document.getElementById('scoreDisplay').innerText = `ОЧКИ: ${score}`;
+      document.getElementById('torpedoDisplay').innerText = `ТОРПЕДЫ: ${torpedoes}`;
+    }
+
+    function fire() {
+      if (state !== 'playing' || activeTorpedo || torpedoes <= 0) return;
+      torpedoes--;
+      updateUI();
+      
+      sound.startTorpedoSound();
+      activeTorpedo = new Torpedo();
+      
+      document.getElementById('btnFire').classList.add('active-btn');
+      setTimeout(() => document.getElementById('btnFire').classList.remove('active-btn'), 180);
+
+      if (torpedoes <= 0) {
+        setTimeout(() => {
+          state = 'gameover';
+          document.getElementById('startOverlay').style.display = 'flex';
+          document.getElementById('startOverlay').innerHTML = `
+            <h1>ИГРА ОКОНЧЕНА<br><br><span style="font-size:1.5rem; color:#ffaa00">ОЧКИ: ${score}</span></h1>
+            <button class="start-btn" onclick="startGame()">СЫГРАТЬ ЕЩЕ</button>
+          `;
+        }, 2600); 
+      }
+    }
+
+    // ─── УПРАВЛЕНИЕ ───
+    const btnL = document.getElementById('btnLeft');
+    const btnR = document.getElementById('btnRight');
+    const btnF = document.getElementById('btnFire');
+
+    btnL.addEventListener('pointerdown', () => { turnSpeed = -4; btnL.classList.add('active-btn'); });
+    btnL.addEventListener('pointerup', () => { turnSpeed = 0; btnL.classList.remove('active-btn'); });
+    btnL.addEventListener('pointerleave', () => { turnSpeed = 0; btnL.classList.remove('active-btn'); });
+    
+    btnR.addEventListener('pointerdown', () => { turnSpeed = 4; btnR.classList.add('active-btn'); });
+    btnR.addEventListener('pointerup', () => { turnSpeed = 0; btnR.classList.remove('active-btn'); });
+    btnR.addEventListener('pointerleave', () => { turnSpeed = 0; btnR.classList.remove('active-btn'); });
+    
+    btnF.addEventListener('pointerdown', fire);
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft' || e.key === 'a') { turnSpeed = -4; btnL.classList.add('active-btn'); }
+      if (e.key === 'ArrowRight' || e.key === 'd') { turnSpeed = 4; btnR.classList.add('active-btn'); }
+      if (e.key === ' ' || e.key === 'Enter') fire();
+    });
+    window.addEventListener('keyup', (e) => {
+      if (e.key === 'ArrowLeft' || e.key === 'a') { turnSpeed = 0; btnL.classList.remove('active-btn'); }
+      if (e.key === 'ArrowRight' || e.key === 'd') { turnSpeed = 0; btnR.classList.remove('active-btn'); }
+    });
+
+    function wrap(val, max) { return ((val % max) + max) % max; }
+
+    // ─── ОТРИСОВКА ОРИГИНАЛЬНОЙ ДИОРАМЫ (КАК НА ФОТО) ───
+    function gameLoop() {
+      if (state !== 'playing' && !activeTorpedo && explosions.length === 0) return;
+      requestAnimationFrame(gameLoop);
+      
+      cameraX += turnSpeed;
+      if (turnSpeed !== 0 && Math.random() > 0.8) sound.playMotor(); 
+
+      if (Math.random() < 0.015 && ships.length < 4) ships.push(new Ship());
+
+      ships.forEach(s => s.update());
+      ships = ships.filter(s => s.active);
+      if (activeTorpedo) activeTorpedo.update();
+
+      // 1. Бирюзовое небо с облаками
+      let skyGrad = ctx.createLinearGradient(0, 0, 0, HORIZON_Y);
+      skyGrad.addColorStop(0, '#2e6b72');
+      skyGrad.addColorStop(0.7, '#4e9297');
+      skyGrad.addColorStop(1, '#6bb2b5');
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, w, HORIZON_Y);
+
+      // Облака
+      ctx.fillStyle = 'rgba(215, 245, 240, 0.25)';
+      ctx.beginPath();
+      let cloudX1 = wrap(500 - cameraX * 0.1, 2000) - 200;
+      ctx.arc(cloudX1, 40, 60, 0, Math.PI*2);
+      ctx.arc(cloudX1 + 50, 35, 45, 0, Math.PI*2);
+      ctx.arc(cloudX1 - 50, 45, 40, 0, Math.PI*2);
+      
+      let cloudX2 = wrap(1400 - cameraX * 0.1, 2000) - 200;
+      ctx.arc(cloudX2, 60, 80, 0, Math.PI*2);
+      ctx.arc(cloudX2 + 70, 50, 55, 0, Math.PI*2);
+      ctx.fill();
+
+      // Световое табло «ИГРА»
+      ctx.save();
+      ctx.font = 'bold 16px "Courier New", monospace';
+      ctx.fillStyle = 'rgba(235, 255, 250, 0.85)';
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.fillText('И Г Р А', w / 2, 35);
+      ctx.restore();
+
+      // 2. Скалы по бокам
+      ctx.fillStyle = '#7a3e1d';
+      ctx.strokeStyle = '#4a2510';
+      ctx.lineWidth = 1.5;
+
+      // Скала СЛЕВА
+      let rockLeftX = wrap(100 - cameraX * 0.35, 2400) - 300;
+      drawPoly([
+        [rockLeftX - 100, HORIZON_Y],
+        [rockLeftX + 40, HORIZON_Y - 110],
+        [rockLeftX + 90, HORIZON_Y - 70],
+        [rockLeftX + 150, HORIZON_Y - 140],
+        [rockLeftX + 220, HORIZON_Y]
+      ], true, true);
+
+      // Скала СПРАВА
+      let rockRightX = wrap(1700 - cameraX * 0.35, 2400) - 300;
+      drawPoly([
+        [rockRightX, HORIZON_Y],
+        [rockRightX + 80, HORIZON_Y - 130],
+        [rockRightX + 140, HORIZON_Y - 80],
+        [rockRightX + 210, HORIZON_Y - 160],
+        [rockRightX + 320, HORIZON_Y]
+      ], true, true);
+
+      // 3. Бирюзовое море
+      let seaGrad = ctx.createLinearGradient(0, HORIZON_Y, 0, h);
+      seaGrad.addColorStop(0, '#2b6f72');
+      seaGrad.addColorStop(0.4, '#1b5053');
+      seaGrad.addColorStop(1, '#0c2d30');
+      ctx.fillStyle = seaGrad;
+      ctx.fillRect(0, HORIZON_Y, w, h - HORIZON_Y);
+
+      // Волны
+      ctx.strokeStyle = 'rgba(120, 200, 195, 0.25)';
+      ctx.lineWidth = 1;
+      for (let y = HORIZON_Y + 8; y < h; y += 12) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+      }
+
+      // Линия горизонта
+      ctx.strokeStyle = 'rgba(160, 230, 220, 0.6)';
+      ctx.beginPath(); ctx.moveTo(0, HORIZON_Y); ctx.lineTo(w, HORIZON_Y); ctx.stroke();
+
+      // 4. Отрисовка кораблей (Они стоят СТРОГО на линии горизонта!)
+      ships.forEach(s => s.draw());
+      
+      // Торпеда
+      if (activeTorpedo) activeTorpedo.draw();
+
+      // Взрывы
+      explosions.forEach(exp => {
+        const sx = exp.x - cameraX + w/2;
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(sx, exp.y - 6, exp.radius * 2, 0, Math.PI * 2);
+        
+        if (exp.splash) {
+          ctx.fillStyle = `rgba(180, 240, 230, ${exp.life * 0.7})`;
+          ctx.fill();
+        } else {
+          ctx.fillStyle = `rgba(255, 60, 20, ${exp.life})`;
+          ctx.shadowBlur = 30; 
+          ctx.shadowColor = '#ff2200';
+          ctx.fill();
+        }
+        
+        ctx.restore();
+        exp.radius += exp.splash ? 0.5 : 1.2;
+        exp.life -= 0.03;
+      });
+      explosions = explosions.filter(e => e.life > 0);
+    }
+  </script>
+</body>
+</html>
