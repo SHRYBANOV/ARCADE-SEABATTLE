@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#020813">
+  <title>Морской Бой - Автомат 15 коп</title>
+  <style>
+    * { 
+      margin: 0; padding: 0; box-sizing: border-box; 
+      -webkit-tap-highlight-color: transparent; user-select: none;
+      touch-action: none; /* Запрет жестов браузера */
+    }
+    
+    body {
+      background: #020813; font-family: 'Courier New', monospace; color: #00ff41;
+      height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+    }
+
+    /* Эффект старого кинескопа */
+    body::after {
+      content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: repeating-linear-gradient(0deg, rgba(0,255,65,0.04) 0px, rgba(0,255,65,0.04) 1px, transparent 1px, transparent 3px);
+      pointer-events: none; z-index: 100;
+    }
+
+    .top-bar {
+      display: flex; justify-content: space-between; padding: 10px 20px;
+      border-bottom: 2px solid #00ff41; background: #051018; z-index: 10;
+    }
+    .top-bar div { font-size: 1.2rem; font-weight: bold; text-shadow: 0 0 10px #00ff41; }
+
+    /* Контейнер перископа */
+    .game-container {
+      flex-grow: 1; display: flex; justify-content: center; align-items: center;
+      position: relative; overflow: hidden; background: #020a14;
+    }
+
+    /* Маска перископа (черные края, прозрачный круг в центре) */
+    .periscope-mask {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: radial-gradient(circle, transparent 45%, #000000 65%);
+      pointer-events: none; z-index: 5;
+    }
+
+    /* Сетка прицела */
+    .crosshair {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      width: 100%; height: 100%; pointer-events: none; z-index: 6;
+    }
+    .crosshair::before { content:''; position:absolute; top:45%; left:20%; width:60%; height:1px; background:rgba(0,255,65,0.5); }
+    .crosshair::after { content:''; position:absolute; left:50%; top:20%; width:1px; height:60%; background:rgba(0,255,65,0.5); }
+    
+    /* Риски упреждения на горизонтальной линии */
+    .crosshair-ticks {
+      position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%);
+      width: 150px; height: 10px; pointer-events: none;
+      border-left: 1px solid rgba(0,255,65,0.5); border-right: 1px solid rgba(0,255,65,0.5); z-index: 6;
+    }
+
+    canvas {
+      width: 100%; height: 100%; object-fit: cover;
+    }
+
+    /* Панель управления (как на игровом автомате) */
+    .control-panel {
+      height: 120px; background: #051018; border-top: 2px solid #00ff41;
+      display: flex; justify-content: space-around; align-items: center; padding: 10px; z-index: 10;
+    }
+
+    .btn {
+      width: 80px; height: 80px; border-radius: 50%;
+      background: #0a1a2a; border: 3px solid #00ff41; color: #00ff41;
+      font-size: 2rem; display: flex; justify-content: center; align-items: center;
+      box-shadow: 0 0 15px rgba(0,255,65,0.2), inset 0 0 15px rgba(0,255,65,0.2);
+    }
+    .btn:active { background: #00ff41; color: #000; }
+    
+    .btn-fire {
+      width: 100px; height: 100px; border-color: #ff3c00; color: #ff3c00;
+      box-shadow: 0 0 20px rgba(255,60,0,0.3), inset 0 0 20px rgba(255,60,0,0.3);
+    }
+    .btn-fire:active { background: #ff3c00; color: #fff; }
+
+    /* Стартовый оверлей */
+    .overlay {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.8); display: flex; flex-direction: column;
+      justify-content: center; align-items: center; z-index: 20;
+    }
+    .overlay h1 { font-size: 2rem; text-align: center; margin-bottom: 20px; text-shadow: 0 0 15px #00ff41; }
+    .start-btn { padding: 15px 30px; font-size: 1.2rem; background: transparent; border: 2px solid #00ff41; color: #00ff41; font-family: inherit; font-weight: bold; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+  <div class="top-bar">
+    <div id="scoreDisplay">ОЧКИ: 0</div>
+    <div id="torpedoDisplay">ТОРПЕДЫ: 10</div>
+  </div>
+
+  <div class="game-container">
+    <canvas id="gameCanvas"></canvas>
+    <div class="periscope-mask"></div>
+    <div class="crosshair"></div>
+    <div class="crosshair-ticks"></div>
+    
+    <div id="startOverlay" class="overlay">
+      <h1>МОРСКОЙ БОЙ<br><span style="font-size: 1rem; color: #ffaa00">АВТОМАТ 15 КОП.</span></h1>
+      <button class="start-btn" onclick="startGame()">ОПУСТИТЬ ПЕРИСКОП</button>
+    </div>
+  </div>
+
+  <div class="control-panel">
+    <div class="btn" id="btnLeft">◀</div>
+    <div class="btn btn-fire" id="btnFire">ОГОНЬ</div>
+    <div class="btn" id="btnRight">▶</div>
+  </div>
+
+  <script>
+    // --- ЗВУКОВОЙ ДВИЖОК ---
+    class SoundEngine {
+      constructor() { this.ctx = null; }
+      init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }
+      play(type) {
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator(), gain = this.ctx.createGain();
+        osc.connect(gain); gain.connect(this.ctx.destination);
+        
+        if (type === 'launch') { // Звук выхода торпеды
+          osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, this.ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(10, this.ctx.currentTime + 1);
+          gain.gain.setValueAtTime(0.3, this.ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 1);
+          osc.start(); osc.stop(this.ctx.currentTime + 1);
+        } else if (type === 'boom') { // Взрыв корабля
+          osc.type = 'square'; osc.frequency.setValueAtTime(100, this.ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(20, this.ctx.currentTime + 0.5);
+          gain.gain.setValueAtTime(0.5, this.ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.5);
+          osc.start(); osc.stop(this.ctx.currentTime + 0.5);
+        } else if (type === 'motor') { // Фоновый гул
+          osc.type = 'sine'; osc.frequency.value = 60;
+          gain.gain.value = 0.05; osc.start();
+          setTimeout(()=> { osc.stop(); }, 100);
+        }
+        if (navigator.vibrate) {
+          if (type === 'launch') navigator.vibrate(50);
+          if (type === 'boom') navigator.vibrate([100, 50, 200, 50, 100]);
+        }
+      }
+    }
+    const sound = new SoundEngine();
+
+    // --- ДВИЖОК ИГРЫ (CANVAS) ---
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    let w, h;
+    let cameraX = 0; // Смещение перископа по горизонтали
+    let turnSpeed = 0;
+    
+    // Игровое состояние
+    let state = 'menu'; // menu, playing, gameover
+    let score = 0;
+    let torpedoes = 10;
+    
+    let ships = [];
+    let activeTorpedo = null;
+    let explosions = [];
+
+    function resize() {
+      w = canvas.width = canvas.parentElement.clientWidth;
+      h = canvas.height = canvas.parentElement.clientHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Константы
+    const HORIZON_Y = h * 0.45;
+    const WORLD_WIDTH = 2000; // Ширина моря
+
+    class Ship {
+      constructor() {
+        this.direction = Math.random() > 0.5 ? 1 : -1;
+        this.speed = (1 + Math.random() * 2) * this.direction;
+        // Спавним за краем экрана
+        this.x = this.direction === 1 ? cameraX - w/2 - 100 : cameraX + w/2 + 100;
+        this.y = HORIZON_Y;
+        this.width = 80;
+        this.height = 30;
+        this.active = true;
+      }
+      update() {
+        this.x += this.speed;
+        // Удаляем, если уплыл слишком далеко
+        if (Math.abs(this.x - cameraX) > w + 200) this.active = false;
+      }
+      draw() {
+        const screenX = this.x - cameraX + w/2;
+        ctx.fillStyle = '#00ff41';
+        
+        // Рисуем ретро-силуэт корабля
+        ctx.beginPath();
+        ctx.moveTo(screenX - this.width/2, this.y);
+        ctx.lineTo(screenX + this.width/2, this.y);
+        ctx.lineTo(screenX + this.width/2 - 10, this.y - 15);
+        ctx.lineTo(screenX - this.width/2 + 10, this.y - 15);
+        ctx.fill();
+        
+        // Рубка
+        ctx.fillRect(screenX - 10, this.y - 25, 20, 10);
+      }
+    }
+
+    class Torpedo {
+      constructor() {
+        this.x = cameraX; // Запускается ровно по центру перископа в момент пуска
+        this.y = h;
+        this.speedY = 6;
+        this.size = 20;
+        this.active = true;
+      }
+      update() {
+        this.y -= this.speedY;
+        this.size = Math.max(2, this.size - 0.1); // Иллюзия перспективы (уменьшается вдаль)
+        
+        if (this.y <= HORIZON_Y + 10) { // Достигла горизонта
+          this.checkCollision();
+          this.active = false;
+          activeTorpedo = null;
+        }
+      }
+      checkCollision() {
+        let hit = false;
+        ships.forEach(ship => {
+          if (ship.active && Math.abs(this.x - ship.x) < ship.width / 2) {
+            ship.active = false; // Убит
+            hit = true;
+            score += 10;
+            document.getElementById('scoreDisplay').innerText = `ОЧКИ: ${score}`;
+            sound.play('boom');
+            explosions.push({ x: ship.x, y: ship.y, radius: 10, life: 1.0 });
+          }
+        });
+        if (!hit) {
+          explosions.push({ x: this.x, y: HORIZON_Y, radius: 5, life: 0.5, splash: true }); // Всплеск воды
+        }
+      }
+      draw() {
+        const screenX = this.x - cameraX + w/2;
+        ctx.fillStyle = 'rgba(0, 255, 65, 0.8)';
+        ctx.beginPath();
+        ctx.arc(screenX, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // След от торпеды (кильватер)
+        ctx.strokeStyle = 'rgba(0, 255, 65, 0.3)';
+        ctx.lineWidth = this.size;
+        ctx.beginPath();
+        ctx.moveTo(screenX, this.y + this.size);
+        ctx.lineTo(screenX, h);
+        ctx.stroke();
+      }
+    }
+
+    function startGame() {
+      sound.init();
+      document.getElementById('startOverlay').style.display = 'none';
+      score = 0;
+      torpedoes = 10;
+      cameraX = 0;
+      ships = [];
+      explosions = [];
+      activeTorpedo = null;
+      state = 'playing';
+      updateUI();
+      gameLoop();
+    }
+
+    function updateUI() {
+      document.getElementById('scoreDisplay').innerText = `ОЧКИ: ${score}`;
+      document.getElementById('torpedoDisplay').innerText = `ТОРПЕДЫ: ${torpedoes}`;
+    }
+
+    function fire() {
+      if (state !== 'playing' || activeTorpedo || torpedoes <= 0) return;
+      torpedoes--;
+      updateUI();
+      sound.play('launch');
+      activeTorpedo = new Torpedo();
+      
+      if (torpedoes <= 0) {
+        setTimeout(() => {
+          state = 'gameover';
+          document.getElementById('startOverlay').style.display = 'flex';
+          document.getElementById('startOverlay').innerHTML = `
+            <h1>ИГРА ОКОНЧЕНА<br>Ваш счет: ${score}</h1>
+            <button class="start-btn" onclick="startGame()">СЫГРАТЬ ЕЩЕ</button>
+          `;
+        }, 2000); // Даем время торпеде доплыть
+      }
+    }
+
+    // --- УПРАВЛЕНИЕ ---
+    const btnL = document.getElementById('btnLeft');
+    const btnR = document.getElementById('btnRight');
+    const btnF = document.getElementById('btnFire');
+
+    // Тач / Мышь
+    btnL.addEventListener('pointerdown', () => turnSpeed = -4);
+    btnL.addEventListener('pointerup', () => turnSpeed = 0);
+    btnL.addEventListener('pointerleave', () => turnSpeed = 0);
+    
+    btnR.addEventListener('pointerdown', () => turnSpeed = 4);
+    btnR.addEventListener('pointerup', () => turnSpeed = 0);
+    btnR.addEventListener('pointerleave', () => turnSpeed = 0);
+    
+    btnF.addEventListener('pointerdown', fire);
+
+    // Клавиатура
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft' || e.key === 'a') turnSpeed = -4;
+      if (e.key === 'ArrowRight' || e.key === 'd') turnSpeed = 4;
+      if (e.key === ' ' || e.key === 'Enter') fire();
+    });
+    window.addEventListener('keyup', (e) => {
+      if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'ArrowRight' || e.key === 'd') turnSpeed = 0;
+    });
+
+    // --- ИГРОВОЙ ЦИКЛ ---
+    function gameLoop() {
+      if (state !== 'playing' && !activeTorpedo && explosions.length === 0) return;
+      requestAnimationFrame(gameLoop);
+      
+      // Логика
+      cameraX += turnSpeed;
+      if (turnSpeed !== 0 && Math.random() > 0.8) sound.play('motor'); // Звук поворота
+
+      // Спавн кораблей
+      if (Math.random() < 0.015 && ships.length < 3) ships.push(new Ship());
+
+      ships.forEach(s => s.update());
+      ships = ships.filter(s => s.active);
+
+      if (activeTorpedo) activeTorpedo.update();
+
+      // Отрисовка
+      ctx.fillStyle = '#020a14'; // Небо
+      ctx.fillRect(0, 0, w, HORIZON_Y);
+      
+      ctx.fillStyle = '#051220'; // Море
+      ctx.fillRect(0, HORIZON_Y, w, h - HORIZON_Y);
+
+      // Линия горизонта
+      ctx.strokeStyle = '#00ff41';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, HORIZON_Y);
+      ctx.lineTo(w, HORIZON_Y);
+      ctx.stroke();
+
+      ships.forEach(s => s.draw());
+      if (activeTorpedo) activeTorpedo.draw();
+
+      // Взрывы
+      explosions.forEach(exp => {
+        const screenX = exp.x - cameraX + w/2;
+        ctx.beginPath();
+        ctx.arc(screenX, exp.y, exp.radius, 0, Math.PI * 2);
+        ctx.fillStyle = exp.splash ? `rgba(255, 255, 255, ${exp.life})` : `rgba(255, 60, 0, ${exp.life})`;
+        ctx.fill();
+        exp.radius += exp.splash ? 1 : 2;
+        exp.life -= 0.05;
+      });
+      explosions = explosions.filter(e => e.life > 0);
+    }
+  </script>
+</body>
+</html>
