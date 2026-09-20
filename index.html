@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#020813">
-  <title>Морской Бой - Симулятор</title>
+  <meta name="theme-color" content="#143d42">
+  <title>Морской Бой - Советский Игровой Автомат</title>
   <style>
     * { 
       margin: 0; padding: 0; box-sizing: border-box; 
@@ -13,82 +13,77 @@
     }
     
     body {
-      background: #020813; font-family: 'Courier New', monospace; color: #00ff41;
+      background: #081719; font-family: 'Courier New', monospace; color: #a3ffdf;
       height: 100vh; display: flex; flex-direction: column; overflow: hidden;
     }
 
-    /* Эффект старого экрана (сканлайны) */
-    body::after {
-      content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: repeating-linear-gradient(0deg, rgba(0,255,65,0.04) 0px, rgba(0,255,65,0.04) 1px, transparent 1px, transparent 3px);
-      pointer-events: none; z-index: 100;
-    }
-
+    /* Верхнее табло автомата */
     .top-bar {
-      display: flex; justify-content: space-between; padding: 12px 25px;
-      border-bottom: 2px solid #00ff41; background: #01060a; z-index: 10;
-      box-shadow: 0 4px 15px rgba(0,255,65,0.1);
+      display: flex; justify-content: space-between; padding: 10px 20px;
+      border-bottom: 2px solid #2e7e80; background: #0b2224; z-index: 10;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
     }
-    .top-bar div { font-size: 1.2rem; font-weight: bold; text-shadow: 0 0 8px #00ff41; }
+    .top-bar div { font-size: 1.1rem; font-weight: bold; color: #a3ffdf; text-shadow: 0 0 6px #2e7e80; }
 
+    /* Оптический блок перископа */
     .game-container {
       flex-grow: 1; display: flex; justify-content: center; align-items: center;
-      position: relative; overflow: hidden; background: #020a14;
+      position: relative; overflow: hidden; background: #0e2b2e;
     }
 
-    /* Затенение по краям перископа */
+    /* Затенение линзы перископа */
     .periscope-mask {
       position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-      background: radial-gradient(circle, transparent 40%, rgba(0,0,0,0.95) 75%);
+      background: radial-gradient(circle, transparent 48%, rgba(2, 10, 11, 0.94) 75%);
       pointer-events: none; z-index: 5;
     }
 
-    /* Сетка оптического прицела */
+    /* Визирное стекло с прицельной сеткой */
     .crosshair {
       position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
       width: 100%; height: 100%; pointer-events: none; z-index: 6;
     }
-    .crosshair::before { content:''; position:absolute; top:45%; left:15%; width:70%; height:1px; background:rgba(0,255,65,0.4); }
-    .crosshair::after { content:''; position:absolute; left:50%; top:15%; width:1px; height:70%; background:rgba(0,255,65,0.4); }
+    .crosshair::before { content:''; position:absolute; top:46%; left:12%; width:76%; height:1px; background:rgba(10, 20, 20, 0.6); }
+    .crosshair::after { content:''; position:absolute; left:50%; top:12%; width:1px; height:76%; background:rgba(10, 20, 20, 0.6); }
     
     .crosshair-ticks {
-      position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%);
-      width: 180px; height: 12px; pointer-events: none;
-      border-left: 2px solid rgba(0,255,65,0.6); border-right: 2px solid rgba(0,255,65,0.6); z-index: 6;
+      position: absolute; top: 46%; left: 50%; transform: translate(-50%, -50%);
+      width: 200px; height: 12px; pointer-events: none;
+      border-left: 2px solid rgba(10, 20, 20, 0.7); border-right: 2px solid rgba(10, 20, 20, 0.7); z-index: 6;
     }
-    .crosshair-ticks::before { content:''; position:absolute; left:33%; top:0; width:1px; height:6px; background:rgba(0,255,65,0.6); }
-    .crosshair-ticks::after { content:''; position:absolute; right:33%; top:0; width:1px; height:6px; background:rgba(0,255,65,0.6); }
+    .crosshair-ticks::before { content:''; position:absolute; left:33%; top:0; width:1px; height:6px; background:rgba(10, 20, 20, 0.7); }
+    .crosshair-ticks::after { content:''; position:absolute; right:33%; top:0; width:1px; height:6px; background:rgba(10, 20, 20, 0.7); }
 
     canvas { width: 100%; height: 100%; object-fit: cover; }
 
+    /* Панель управления автомата */
     .control-panel {
-      height: 120px; background: #01060a; border-top: 2px solid #00ff41;
+      height: 110px; background: #0a1e20; border-top: 2px solid #2e7e80;
       display: flex; justify-content: space-around; align-items: center; padding: 10px; z-index: 10;
     }
 
     .btn {
-      width: 80px; height: 80px; border-radius: 50%;
-      background: #051018; border: 3px solid #00ff41; color: #00ff41;
-      font-size: 2rem; display: flex; justify-content: center; align-items: center;
-      box-shadow: 0 0 15px rgba(0,255,65,0.15), inset 0 0 10px rgba(0,255,65,0.1);
-      transition: background 0.1s;
+      width: 75px; height: 75px; border-radius: 50%;
+      background: #123538; border: 3px solid #2e7e80; color: #a3ffdf;
+      font-size: 1.8rem; display: flex; justify-content: center; align-items: center;
+      box-shadow: 0 0 10px rgba(0,0,0,0.5), inset 0 0 10px rgba(163,255,223,0.1);
     }
-    .btn.active-btn { background: #00ff41; color: #000; box-shadow: 0 0 20px #00ff41; }
+    .btn.active-btn { background: #2e7e80; color: #fff; }
     
     .btn-fire {
-      width: 100px; height: 100px; border-color: #ff3c00; color: #ff3c00;
-      box-shadow: 0 0 20px rgba(255,60,0,0.2), inset 0 0 15px rgba(255,60,0,0.2);
+      width: 90px; height: 90px; border-color: #d64028; color: #ff6b4a;
+      box-shadow: 0 0 15px rgba(214,64,40,0.3), inset 0 0 15px rgba(214,64,40,0.2);
     }
-    .btn-fire.active-btn { background: #ff3c00; color: #fff; box-shadow: 0 0 30px #ff3c00; }
+    .btn-fire.active-btn { background: #d64028; color: #fff; }
 
     .overlay {
       position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(2, 8, 19, 0.9); display: flex; flex-direction: column;
+      background: rgba(8, 23, 25, 0.92); display: flex; flex-direction: column;
       justify-content: center; align-items: center; z-index: 20;
     }
-    .overlay h1 { font-size: 2.2rem; text-align: center; margin-bottom: 30px; text-shadow: 0 0 15px #00ff41; letter-spacing: 2px; }
-    .start-btn { padding: 15px 40px; font-size: 1.2rem; background: rgba(0,255,65,0.1); border: 2px solid #00ff41; color: #00ff41; font-family: inherit; font-weight: bold; cursor: pointer; text-transform: uppercase; box-shadow: 0 0 15px rgba(0,255,65,0.2); }
-    .start-btn:active { background: #00ff41; color: #000; }
+    .overlay h1 { font-size: 2.2rem; text-align: center; margin-bottom: 25px; color: #a3ffdf; text-shadow: 0 0 12px #2e7e80; letter-spacing: 3px; }
+    .start-btn { padding: 15px 40px; font-size: 1.2rem; background: rgba(46,126,128,0.2); border: 2px solid #a3ffdf; color: #a3ffdf; font-family: inherit; font-weight: bold; cursor: pointer; text-transform: uppercase; box-shadow: 0 0 15px rgba(46,126,128,0.3); }
+    .start-btn:active { background: #a3ffdf; color: #081719; }
   </style>
 </head>
 <body>
@@ -117,39 +112,178 @@
   </div>
 
   <script>
-    // --- ЗВУКОВОЙ ДВИЖОК ---
+    // ─── АУТЕНТИЧНЫЙ ЗВУКОВОЙ ДВИЖОК ───
     class SoundEngine {
-      constructor() { this.ctx = null; }
-      init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }
-      play(type) {
-        if (!this.ctx) return;
-        const osc = this.ctx.createOscillator(), gain = this.ctx.createGain();
-        osc.connect(gain); gain.connect(this.ctx.destination);
-        
-        if (type === 'launch') { 
-          osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, this.ctx.currentTime);
-          osc.frequency.exponentialRampToValueAtTime(10, this.ctx.currentTime + 1.2);
-          gain.gain.setValueAtTime(0.4, this.ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 1.2);
-          osc.start(); osc.stop(this.ctx.currentTime + 1.2);
-        } else if (type === 'boom') { 
-          osc.type = 'square'; osc.frequency.setValueAtTime(100, this.ctx.currentTime);
-          osc.frequency.exponentialRampToValueAtTime(10, this.ctx.currentTime + 0.8);
-          gain.gain.setValueAtTime(0.6, this.ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.8);
-          osc.start(); osc.stop(this.ctx.currentTime + 0.8);
-        } else if (type === 'motor') { 
-          osc.type = 'sine'; osc.frequency.value = 50;
-          gain.gain.value = 0.05; osc.start();
-          setTimeout(()=> { osc.stop(); }, 100);
-        }
-        if (navigator.vibrate) {
-          if (type === 'launch') navigator.vibrate(50);
-          if (type === 'boom') navigator.vibrate([100, 50, 200, 50, 300]);
+      constructor() {
+        this.ctx = null;
+        this.noiseBuffer = null;
+        this.torpedoTimer = null;
+      }
+
+      init() {
+        if (!this.ctx) {
+          this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+          this._createNoiseBuffer();
         }
       }
+
+      _createNoiseBuffer() {
+        const bufferSize = this.ctx.sampleRate * 2;
+        this.noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const output = this.noiseBuffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          output[i] = Math.random() * 2 - 1;
+        }
+      }
+
+      playStartJingle() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        
+        const siren = this.ctx.createOscillator();
+        const sirenGain = this.ctx.createGain();
+        siren.type = 'sawtooth';
+        siren.frequency.setValueAtTime(280, now);
+        siren.frequency.linearRampToValueAtTime(650, now + 0.35);
+        siren.frequency.linearRampToValueAtTime(280, now + 0.7);
+        sirenGain.gain.setValueAtTime(0.12, now);
+        sirenGain.gain.exponentialRampToValueAtTime(0.001, now + 0.75);
+        siren.connect(sirenGain);
+        sirenGain.connect(this.ctx.destination);
+        siren.start(now);
+        siren.stop(now + 0.75);
+
+        const notes = [261.63, 329.63, 392.00, 523.25];
+        notes.forEach((freq, i) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'square';
+          osc.frequency.value = freq;
+          gain.gain.setValueAtTime(0.08, now + 0.7 + i * 0.09);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.8 + i * 0.09);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now + 0.7 + i * 0.09);
+          osc.stop(now + 0.8 + i * 0.09);
+        });
+      }
+
+      // Звук шагающих лампочек торпеды (пи-пи-пи)
+      startTorpedoSound() {
+        if (!this.ctx) return;
+        this.stopTorpedoSound();
+
+        let step = 0;
+        this.torpedoTimer = setInterval(() => {
+          if (!this.ctx) return;
+          step++;
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          
+          osc.type = 'square';
+          const pitch = 320 + step * 14;
+          osc.frequency.setValueAtTime(pitch, now);
+          
+          gain.gain.setValueAtTime(0.1, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+          
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.05);
+        }, 100 - Math.min(step * 2, 45));
+      }
+
+      stopTorpedoSound() {
+        if (this.torpedoTimer) {
+          clearInterval(this.torpedoTimer);
+          this.torpedoTimer = null;
+        }
+      }
+
+      // Глубокий взрыв
+      playExplosion() {
+        if (!this.ctx) return;
+        this.stopTorpedoSound();
+        const now = this.ctx.currentTime;
+
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = this.noiseBuffer;
+        
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(1000, now);
+        filter.frequency.exponentialRampToValueAtTime(25, now + 1.1);
+
+        const noiseGain = this.ctx.createGain();
+        noiseGain.gain.setValueAtTime(0.7, now);
+        noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 1.1);
+
+        noise.connect(filter);
+        filter.connect(noiseGain);
+        noiseGain.connect(this.ctx.destination);
+
+        const sub = this.ctx.createOscillator();
+        const subGain = this.ctx.createGain();
+        sub.type = 'triangle';
+        sub.frequency.setValueAtTime(120, now);
+        sub.frequency.exponentialRampToValueAtTime(20, now + 0.8);
+
+        subGain.gain.setValueAtTime(0.8, now);
+        subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+
+        sub.connect(subGain);
+        subGain.connect(this.ctx.destination);
+
+        noise.start(now);
+        sub.start(now);
+        noise.stop(now + 1.1);
+        sub.stop(now + 0.8);
+
+        if (navigator.vibrate) navigator.vibrate([100, 50, 200, 50, 150]);
+      }
+
+      playSplash() {
+        if (!this.ctx) return;
+        this.stopTorpedoSound();
+        const now = this.ctx.currentTime;
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = this.noiseBuffer;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(500, now);
+        filter.frequency.linearRampToValueAtTime(180, now + 0.4);
+
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+        noise.start(now);
+        noise.stop(now + 0.4);
+      }
+
+      playMotor() {
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = 50;
+        gain.gain.value = 0.03;
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        setTimeout(() => osc.stop(), 90);
+      }
     }
+
     const sound = new SoundEngine();
 
-    // --- ДВИЖОК ИГРЫ (CANVAS) ---
+    // ─── ДВИЖОК ДИОРАМЫ (CANVAS) ───
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     
@@ -165,39 +299,22 @@
     let ships = [];
     let activeTorpedo = null;
     let explosions = [];
-    let stars = [];
-    let mountains = [];
 
-    // Характеристики кораблей
     const SHIP_TYPES = [
-      { type: 'submarine', width: 60, speedBase: 2.5, points: 30, yOffset: 2 },
-      { type: 'destroyer', width: 110, speedBase: 1.5, points: 20, yOffset: 0 },
-      { type: 'battleship', width: 180, speedBase: 0.8, points: 10, yOffset: -5 }
+      { type: 'submarine', width: 70, speedBase: 2.2, points: 30, yOffset: 3 },
+      { type: 'destroyer', width: 125, speedBase: 1.5, points: 20, yOffset: 0 },
+      { type: 'cargo', width: 155, speedBase: 1.0, points: 15, yOffset: -2 },
+      { type: 'battleship', width: 200, speedBase: 0.7, points: 10, yOffset: -4 }
     ];
 
     function resize() {
       w = canvas.width = canvas.parentElement.clientWidth;
       h = canvas.height = canvas.parentElement.clientHeight;
-      HORIZON_Y = h * 0.45;
-      generateBackground();
+      HORIZON_Y = h * 0.48;
     }
     window.addEventListener('resize', resize);
-    
-    // Генерация статического мира (для параллакса)
-    function generateBackground() {
-      stars = []; mountains = [];
-      for(let i=0; i<80; i++) {
-        stars.push({ x: Math.random() * 3000, y: Math.random() * HORIZON_Y, size: Math.random() * 1.5 });
-      }
-      let mx = 0;
-      while (mx < 3000) {
-        let mWidth = 100 + Math.random() * 200;
-        let mHeight = 20 + Math.random() * 40;
-        mountains.push({ x: mx, w: mWidth, h: mHeight });
-        mx += mWidth * 0.8; 
-      }
-    }
 
+    // ─── РЕАЛИСТИЧНЫЕ ЧЁРНЫЕ СИЛУЭТЫ КОРАБЛЕЙ ───
     class Ship {
       constructor() {
         let template = SHIP_TYPES[Math.floor(Math.random() * SHIP_TYPES.length)];
@@ -205,93 +322,154 @@
         this.width = template.width;
         this.points = template.points;
         this.direction = Math.random() > 0.5 ? 1 : -1;
-        this.speed = (template.speedBase + Math.random() * 0.5) * this.direction;
+        this.speed = (template.speedBase + Math.random() * 0.3) * this.direction;
         
-        // Появляются за экраном
-        this.x = this.direction === 1 ? cameraX - w/2 - 200 : cameraX + w/2 + 200;
+        this.x = this.direction === 1 ? cameraX - w/2 - 250 : cameraX + w/2 + 250;
         this.y = HORIZON_Y + template.yOffset;
         this.active = true;
+        this.wakeFrame = 0;
       }
+
       update() {
         this.x += this.speed;
-        if (Math.abs(this.x - cameraX) > w + 400) this.active = false;
+        this.wakeFrame += 0.08;
+        if (Math.abs(this.x - cameraX) > w + 500) this.active = false;
       }
-      draw() {
-        const screenX = this.x - cameraX + w/2;
-        
-        ctx.fillStyle = '#010a05'; // Темная заливка внутри
-        ctx.strokeStyle = '#00ff41'; // Неоновый контур
-        ctx.lineWidth = 1.5;
-        
-        ctx.shadowBlur = 8;
-        ctx.shadowColor = '#00ff41';
 
-        ctx.beginPath();
+      draw() {
+        const sx = this.x - cameraX + w/2;
+        const dir = this.direction;
         
+        ctx.save();
+
+        // Белая пенная волна у носа и кормы (как в оригинале)
+        ctx.strokeStyle = 'rgba(180, 230, 220, 0.4)';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        const wakeLen = this.width * 0.7;
+        ctx.moveTo(sx - (this.width/2) * dir, this.y + 1);
+        ctx.lineTo(sx - (this.width/2 + wakeLen) * dir, this.y + 3 + Math.sin(this.wakeFrame) * 1.2);
+        ctx.stroke();
+
+        // Тёмный силуэт корабля
+        ctx.fillStyle = '#0a1618';
+        ctx.strokeStyle = '#050d0e';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+
         if (this.type === 'submarine') {
-          // Подлодка
-          ctx.ellipse(screenX, this.y, this.width/2, 8, 0, Math.PI, 0);
-          ctx.rect(screenX - 8, this.y - 18, 16, 18); // Рубка
-          ctx.moveTo(screenX, this.y - 18); ctx.lineTo(screenX, this.y - 25); // Перископ
+          const r = 7;
+          ctx.moveTo(sx - this.width/2, this.y);
+          ctx.quadraticCurveTo(sx, this.y - r*2, sx + this.width/2, this.y);
+          ctx.lineTo(sx - this.width/2, this.y);
+          ctx.rect(sx - 9, this.y - 13, 18, 9);
+          ctx.moveTo(sx + 2 * dir, this.y - 13); ctx.lineTo(sx + 2 * dir, this.y - 22);
         } 
         else if (this.type === 'destroyer') {
-          // Эсминец
-          ctx.moveTo(screenX - this.width/2, this.y);
-          ctx.lineTo(screenX + this.width/2, this.y);
-          if (this.direction === 1) ctx.lineTo(screenX + this.width/2 - 20, this.y - 12);
-          else ctx.lineTo(screenX - this.width/2 + 20, this.y - 12);
-          ctx.lineTo(screenX - (this.width/2 - 20) * this.direction, this.y - 12);
+          ctx.moveTo(sx - this.width/2, this.y);
+          ctx.lineTo(sx + this.width/2, this.y);
+          ctx.lineTo(sx + (this.width/2 - 14) * dir, this.y - 13);
+          ctx.lineTo(sx - (this.width/2 - 10) * dir, this.y - 11);
+          ctx.closePath();
+
+          ctx.rect(sx - 14, this.y - 23, 28, 11);
+          ctx.rect(sx - 7, this.y - 30, 14, 7);
           
-          ctx.rect(screenX - 25, this.y - 25, 40, 13); // Рубка
-          ctx.moveTo(screenX - 5, this.y - 25); ctx.lineTo(screenX - 5, this.y - 45); // Мачта
-          ctx.rect(screenX + 25 * this.direction, this.y - 18, 15, 6); // Пушка
+          ctx.moveTo(sx, this.y - 30); ctx.lineTo(sx, this.y - 45);
+          ctx.moveTo(sx - 5, this.y - 40); ctx.lineTo(sx + 5, this.y - 40);
+          
+          ctx.rect(sx - 26 * dir, this.y - 24, 9, 13);
+
+          const gun1X = sx + 32 * dir;
+          ctx.rect(gun1X - 5, this.y - 17, 10, 5);
+          ctx.moveTo(gun1X, this.y - 14); ctx.lineTo(gun1X + 16 * dir, this.y - 17);
+
+          const gun2X = sx - 32 * dir;
+          ctx.rect(gun2X - 5, this.y - 15, 10, 5);
+          ctx.moveTo(gun2X, this.y - 12); ctx.lineTo(gun2X - 15 * dir, this.y - 15);
+        }
+        else if (this.type === 'cargo') {
+          ctx.moveTo(sx - this.width/2, this.y);
+          ctx.lineTo(sx + this.width/2, this.y);
+          ctx.lineTo(sx + (this.width/2 - 8) * dir, this.y - 15);
+          ctx.lineTo(sx - (this.width/2 - 8) * dir, this.y - 15);
+          ctx.closePath();
+
+          ctx.rect(sx + (this.width/2 - 24) * dir, this.y - 21, 16, 6);
+          
+          const aftX = sx - (this.width/2 - 32) * dir;
+          ctx.rect(aftX - 14, this.y - 30, 28, 15);
+          ctx.rect(aftX - 4, this.y - 42, 8, 12); 
+
+          const m1 = sx + 10 * dir;
+          ctx.moveTo(m1, this.y - 15); ctx.lineTo(m1, this.y - 36);
+          ctx.moveTo(m1, this.y - 28); ctx.lineTo(m1 + 14 * dir, this.y - 18);
+
+          const m2 = sx - 15 * dir;
+          ctx.moveTo(m2, this.y - 15); ctx.lineTo(m2, this.y - 36);
+          ctx.moveTo(m2, this.y - 28); ctx.lineTo(m2 - 14 * dir, this.y - 18);
         }
         else if (this.type === 'battleship') {
-          // Линкор
-          ctx.moveTo(screenX - this.width/2, this.y);
-          ctx.lineTo(screenX + this.width/2, this.y);
-          if (this.direction === 1) ctx.lineTo(screenX + this.width/2 - 30, this.y - 18);
-          else ctx.lineTo(screenX - this.width/2 + 30, this.y - 18);
-          ctx.lineTo(screenX - (this.width/2 - 30) * this.direction, this.y - 18);
+          ctx.moveTo(sx - this.width/2, this.y);
+          ctx.lineTo(sx + this.width/2, this.y);
+          ctx.lineTo(sx + (this.width/2 - 24) * dir, this.y - 17);
+          ctx.lineTo(sx - (this.width/2 - 18) * dir, this.y - 15);
+          ctx.closePath();
+
+          ctx.rect(sx - 32, this.y - 30, 64, 13);
+          ctx.rect(sx - 18, this.y - 45, 36, 15);
+          ctx.rect(sx - 9, this.y - 58, 18, 13);
           
-          // Большая надстройка
-          ctx.rect(screenX - 40, this.y - 35, 70, 17); 
-          ctx.rect(screenX - 20, this.y - 50, 30, 15);
-          
-          // Трубы
-          ctx.rect(screenX + 5, this.y - 65, 8, 15);
-          
-          // Башни ГК
-          ctx.rect(screenX + 45 * this.direction, this.y - 24, 25, 10);
-          ctx.rect(screenX - 60 * this.direction, this.y - 24, 25, 10);
+          ctx.moveTo(sx, this.y - 58); ctx.lineTo(sx, this.y - 70);
+          ctx.moveTo(sx - 9, this.y - 66); ctx.lineTo(sx + 9, this.y - 66);
+
+          ctx.rect(sx - 26 * dir, this.y - 40, 8, 13);
+          ctx.rect(sx - 40 * dir, this.y - 36, 8, 11);
+
+          const b1 = sx + 42 * dir;
+          ctx.rect(b1 - 9, this.y - 24, 18, 8);
+          ctx.moveTo(b1, this.y - 20); ctx.lineTo(b1 + 22 * dir, this.y - 22);
+
+          const b2 = sx + 70 * dir;
+          ctx.rect(b2 - 9, this.y - 21, 18, 7);
+          ctx.moveTo(b2, this.y - 18); ctx.lineTo(b2 + 22 * dir, this.y - 20);
+
+          const b3 = sx - 60 * dir;
+          ctx.rect(b3 - 9, this.y - 21, 18, 7);
+          ctx.moveTo(b3, this.y - 18); ctx.lineTo(b3 - 22 * dir, this.y - 20);
         }
 
-        ctx.closePath();
         ctx.fill();
         ctx.stroke();
-        
-        ctx.shadowBlur = 0; // Отключаем свечение для других объектов
+        ctx.restore();
       }
     }
 
+    // ─── ИМИТАЦИЯ ЦЕПОЧКИ ЛАМПОЧЕК ТОРПЕДЫ ───
     class Torpedo {
       constructor() {
         this.x = cameraX; 
         this.y = h;
-        this.speedY = 5;
-        this.size = 12;
+        this.speedY = 5.0;
         this.active = true;
+        this.bulbs = []; // Горящие лампочки под стеклом
       }
+
       update() {
         this.y -= this.speedY;
-        this.size = Math.max(2, this.size - 0.08);
         
-        if (this.y <= HORIZON_Y + 5) {
+        // Добавляем точки-лампочки по путям
+        this.bulbs.push({ x: this.x, y: this.y, alpha: 1.0 });
+        this.bulbs.forEach(b => b.alpha -= 0.04);
+        this.bulbs = this.bulbs.filter(b => b.alpha > 0);
+
+        if (this.y <= HORIZON_Y + 4) {
           this.checkCollision();
           this.active = false;
           activeTorpedo = null;
         }
       }
+
       checkCollision() {
         let hit = false;
         ships.forEach(ship => {
@@ -300,38 +478,38 @@
             hit = true;
             score += ship.points;
             document.getElementById('scoreDisplay').innerText = `ОЧКИ: ${score}`;
-            sound.play('boom');
+            sound.playExplosion();
             explosions.push({ x: ship.x, y: ship.y, radius: 10, life: 1.0 });
           }
         });
+
         if (!hit) {
-          explosions.push({ x: this.x, y: HORIZON_Y, radius: 5, life: 0.5, splash: true });
+          sound.playSplash();
+          explosions.push({ x: this.x, y: HORIZON_Y, radius: 5, life: 0.6, splash: true });
         }
       }
+
       draw() {
-        const screenX = this.x - cameraX + w/2;
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = '#00ff41';
-        ctx.fillStyle = '#00ff41';
-        
-        ctx.beginPath();
-        ctx.arc(screenX, this.y, this.size, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Кильватер
-        ctx.strokeStyle = 'rgba(0, 255, 65, 0.4)';
-        ctx.lineWidth = this.size;
-        ctx.beginPath();
-        ctx.moveTo(screenX, this.y + this.size);
-        ctx.lineTo(screenX, this.y + this.size + 40);
-        ctx.stroke();
-        ctx.shadowBlur = 0;
+        // Оранжево-жёлтая цепочка лампочек (как в оригинале)
+        this.bulbs.forEach(b => {
+          const sx = b.x - cameraX + w/2;
+          ctx.save();
+          ctx.fillStyle = `rgba(255, 170, 0, ${b.alpha})`;
+          ctx.shadowBlur = 12 * b.alpha;
+          ctx.shadowColor = '#ff8800';
+          ctx.beginPath();
+          ctx.arc(sx, b.y, 3.5 * b.alpha + 1, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        });
       }
     }
 
     function startGame() {
       resize();
       sound.init();
+      sound.playStartJingle();
+
       document.getElementById('startOverlay').style.display = 'none';
       score = 0; torpedoes = 10; cameraX = 1500;
       ships = []; explosions = []; activeTorpedo = null;
@@ -349,12 +527,12 @@
       if (state !== 'playing' || activeTorpedo || torpedoes <= 0) return;
       torpedoes--;
       updateUI();
-      sound.play('launch');
+      
+      sound.startTorpedoSound();
       activeTorpedo = new Torpedo();
       
-      // Анимация кнопки
       document.getElementById('btnFire').classList.add('active-btn');
-      setTimeout(()=> document.getElementById('btnFire').classList.remove('active-btn'), 200);
+      setTimeout(() => document.getElementById('btnFire').classList.remove('active-btn'), 180);
 
       if (torpedoes <= 0) {
         setTimeout(() => {
@@ -364,11 +542,11 @@
             <h1>ИГРА ОКОНЧЕНА<br><br><span style="font-size:1.5rem; color:#ffaa00">ОЧКИ: ${score}</span></h1>
             <button class="start-btn" onclick="startGame()">СЫГРАТЬ ЕЩЕ</button>
           `;
-        }, 2500); 
+        }, 2600); 
       }
     }
 
-    // --- УПРАВЛЕНИЕ ---
+    // ─── УПРАВЛЕНИЕ ───
     const btnL = document.getElementById('btnLeft');
     const btnR = document.getElementById('btnRight');
     const btnF = document.getElementById('btnFire');
@@ -393,15 +571,15 @@
       if (e.key === 'ArrowRight' || e.key === 'd') { turnSpeed = 0; btnR.classList.remove('active-btn'); }
     });
 
-    // Вспомогательная функция зацикливания координат
     function wrap(val, max) { return ((val % max) + max) % max; }
 
+    // ─── ОТРИСОВКА ОРИГИНАЛЬНОЙ ДИОРАМЫ (КАК НА ФОТО) ───
     function gameLoop() {
       if (state !== 'playing' && !activeTorpedo && explosions.length === 0) return;
       requestAnimationFrame(gameLoop);
       
       cameraX += turnSpeed;
-      if (turnSpeed !== 0 && Math.random() > 0.8) sound.play('motor'); 
+      if (turnSpeed !== 0 && Math.random() > 0.8) sound.playMotor(); 
 
       if (Math.random() < 0.015 && ships.length < 4) ships.push(new Ship());
 
@@ -409,66 +587,112 @@
       ships = ships.filter(s => s.active);
       if (activeTorpedo) activeTorpedo.update();
 
-      // ОТРИСОВКА МИРА
-      // 1. Небо
+      // 1. Бирюзовое небо с облаками
       let skyGrad = ctx.createLinearGradient(0, 0, 0, HORIZON_Y);
-      skyGrad.addColorStop(0, '#01050a'); skyGrad.addColorStop(1, '#021526');
+      skyGrad.addColorStop(0, '#2e6b72');
+      skyGrad.addColorStop(0.7, '#4e9297');
+      skyGrad.addColorStop(1, '#6bb2b5');
       ctx.fillStyle = skyGrad;
       ctx.fillRect(0, 0, w, HORIZON_Y);
 
-      // 2. Звезды (медленный параллакс)
-      ctx.fillStyle = 'rgba(0, 255, 65, 0.4)';
-      stars.forEach(s => {
-        let sx = wrap(s.x - cameraX * 0.1, 3000);
-        if (sx < w) { ctx.beginPath(); ctx.arc(sx, s.y, s.size, 0, Math.PI*2); ctx.fill(); }
-      });
+      // Рисуем полупрозрачные туманные облака
+      ctx.fillStyle = 'rgba(215, 245, 240, 0.25)';
+      ctx.beginPath();
+      let cloudX1 = wrap(500 - cameraX * 0.1, 2000) - 200;
+      ctx.arc(cloudX1, 40, 60, 0, Math.PI*2);
+      ctx.arc(cloudX1 + 50, 35, 45, 0, Math.PI*2);
+      ctx.arc(cloudX1 - 50, 45, 40, 0, Math.PI*2);
+      
+      let cloudX2 = wrap(1400 - cameraX * 0.1, 2000) - 200;
+      ctx.arc(cloudX2, 60, 80, 0, Math.PI*2);
+      ctx.arc(cloudX2 + 70, 50, 55, 0, Math.PI*2);
+      ctx.fill();
 
-      // 3. Горы на горизонте (средний параллакс)
-      ctx.fillStyle = '#010a14';
-      ctx.strokeStyle = 'rgba(0, 255, 65, 0.3)';
-      ctx.lineWidth = 1;
-      mountains.forEach(m => {
-        let mx = wrap(m.x - cameraX * 0.3, 3000);
-        if (mx < w + 300 && mx > -300) {
-          ctx.beginPath();
-          ctx.moveTo(mx, HORIZON_Y);
-          ctx.lineTo(mx + m.w/2, HORIZON_Y - m.h);
-          ctx.lineTo(mx + m.w, HORIZON_Y);
-          ctx.fill(); ctx.stroke();
-        }
-      });
+      // Световое табло «ИГРА» в центре неба (как на фото)
+      ctx.save();
+      ctx.font = 'bold 16px "Courier New", monospace';
+      ctx.fillStyle = 'rgba(235, 255, 250, 0.85)';
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.fillText('И Г Р А', w / 2, 35);
+      ctx.restore();
 
-      // 4. Море
+      // 2. Коричнево-охристые скалы по бокам бухты (как на фото)
+      ctx.fillStyle = '#7a3e1d';
+      ctx.strokeStyle = '#4a2510';
+      ctx.lineWidth = 1.5;
+
+      // Скала СЛЕВА
+      let rockLeftX = wrap(100 - cameraX * 0.35, 2400) - 300;
+      ctx.beginPath();
+      ctx.moveTo(rockLeftX - 100, HORIZON_Y);
+      ctx.lineTo(rockLeftX + 40, HORIZON_Y - 110);
+      ctx.lineTo(rockLeftX + 90, HORIZON_Y - 70);
+      ctx.lineTo(rockLeftX + 150, HORIZON_Y - 140);
+      ctx.lineTo(rockLeftX + 220, HORIZON_Y);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+
+      // Скала СПРАВА
+      let rockRightX = wrap(1700 - cameraX * 0.35, 2400) - 300;
+      ctx.beginPath();
+      ctx.moveTo(rockRightX, HORIZON_Y);
+      ctx.lineTo(rockRightX + 80, HORIZON_Y - 130);
+      ctx.lineTo(rockRightX + 140, HORIZON_Y - 80);
+      ctx.lineTo(rockRightX + 210, HORIZON_Y - 160);
+      ctx.lineTo(rockRightX + 320, HORIZON_Y);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+
+      // 3. Бирюзовое море с волнами
       let seaGrad = ctx.createLinearGradient(0, HORIZON_Y, 0, h);
-      seaGrad.addColorStop(0, '#001a11'); seaGrad.addColorStop(1, '#000502');
+      seaGrad.addColorStop(0, '#2b6f72');
+      seaGrad.addColorStop(0.4, '#1b5053');
+      seaGrad.addColorStop(1, '#0c2d30');
       ctx.fillStyle = seaGrad;
       ctx.fillRect(0, HORIZON_Y, w, h - HORIZON_Y);
 
+      // Горизонтальные линии волн
+      ctx.strokeStyle = 'rgba(120, 200, 195, 0.25)';
+      ctx.lineWidth = 1;
+      for (let y = HORIZON_Y + 8; y < h; y += 12) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+      }
+
       // Линия горизонта
-      ctx.strokeStyle = 'rgba(0, 255, 65, 0.8)'; ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(160, 230, 220, 0.6)';
       ctx.beginPath(); ctx.moveTo(0, HORIZON_Y); ctx.lineTo(w, HORIZON_Y); ctx.stroke();
 
-      // Отрисовка кораблей
+      // Корабли
       ships.forEach(s => s.draw());
+      
+      // ТОРПЕДА (цепочка оранжевых ламп)
       if (activeTorpedo) activeTorpedo.draw();
 
-      // Отрисовка взрывов
+      // Красные вспышки взрывов (как оригинальные красные лампы за стеклом)
       explosions.forEach(exp => {
-        const screenX = exp.x - cameraX + w/2;
+        const sx = exp.x - cameraX + w/2;
+        ctx.save();
         ctx.beginPath();
-        ctx.arc(screenX, exp.y, exp.radius, 0, Math.PI * 2);
+        ctx.arc(sx, exp.y - 8, exp.radius * 2, 0, Math.PI * 2);
         
         if (exp.splash) {
-          ctx.fillStyle = `rgba(0, 255, 65, ${exp.life})`; // Водяной столб зеленый
+          ctx.fillStyle = `rgba(180, 240, 230, ${exp.life * 0.7})`;
+          ctx.fill();
         } else {
-          ctx.fillStyle = `rgba(255, 60, 0, ${exp.life})`; // Огонь красный
-          ctx.shadowBlur = 20; ctx.shadowColor = '#ff3c00';
+          // Яркий оранжево-красный свет вспышки лампы за кораблем
+          ctx.fillStyle = `rgba(255, 60, 20, ${exp.life})`;
+          ctx.shadowBlur = 30; 
+          ctx.shadowColor = '#ff2200';
+          ctx.fill();
         }
         
-        ctx.fill();
-        ctx.shadowBlur = 0;
-        
-        exp.radius += exp.splash ? 0.5 : 1.5;
+        ctx.restore();
+        exp.radius += exp.splash ? 0.5 : 1.2;
         exp.life -= 0.03;
       });
       explosions = explosions.filter(e => e.life > 0);
