@@ -43,11 +43,11 @@
       position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
       width: 100%; height: 100%; pointer-events: none; z-index: 6;
     }
-    .crosshair::before { content:''; position:absolute; top:46%; left:12%; width:76%; height:1px; background:rgba(10, 20, 20, 0.6); }
-    .crosshair::after { content:''; position:absolute; left:50%; top:12%; width:1px; height:76%; background:rgba(10, 20, 20, 0.6); }
+    .crosshair::before { content:''; position:absolute; top:48%; left:10%; width:80%; height:1px; background:rgba(10, 20, 20, 0.6); }
+    .crosshair::after { content:''; position:absolute; left:50%; top:10%; width:1px; height:80%; background:rgba(10, 20, 20, 0.6); }
     
     .crosshair-ticks {
-      position: absolute; top: 46%; left: 50%; transform: translate(-50%, -50%);
+      position: absolute; top: 48%; left: 50%; transform: translate(-50%, -50%);
       width: 200px; height: 12px; pointer-events: none;
       border-left: 2px solid rgba(10, 20, 20, 0.7); border-right: 2px solid rgba(10, 20, 20, 0.7); z-index: 6;
     }
@@ -168,7 +168,6 @@
         });
       }
 
-      // Звук шагающих лампочек торпеды (пи-пи-пи)
       startTorpedoSound() {
         if (!this.ctx) return;
         this.stopTorpedoSound();
@@ -202,7 +201,6 @@
         }
       }
 
-      // Глубокий взрыв
       playExplosion() {
         if (!this.ctx) return;
         this.stopTorpedoSound();
@@ -301,10 +299,10 @@
     let explosions = [];
 
     const SHIP_TYPES = [
-      { type: 'submarine', width: 70, speedBase: 2.2, points: 30, yOffset: 3 },
-      { type: 'destroyer', width: 125, speedBase: 1.5, points: 20, yOffset: 0 },
-      { type: 'cargo', width: 155, speedBase: 1.0, points: 15, yOffset: -2 },
-      { type: 'battleship', width: 200, speedBase: 0.7, points: 10, yOffset: -4 }
+      { type: 'submarine', width: 70, height: 14, speedBase: 2.2, points: 30 },
+      { type: 'destroyer', width: 125, height: 28, speedBase: 1.5, points: 20 },
+      { type: 'cargo', width: 155, height: 32, speedBase: 1.0, points: 15 },
+      { type: 'battleship', width: 200, height: 42, speedBase: 0.7, points: 10 }
     ];
 
     function resize() {
@@ -314,18 +312,31 @@
     }
     window.addEventListener('resize', resize);
 
+    // Вспомогательный метод правильного рисования контура (без багов Canvas)
+    function drawPoly(points, fill = true, stroke = false) {
+      ctx.beginPath();
+      ctx.moveTo(points[0][0], points[0][1]);
+      for (let i = 1; i < points.length; i++) {
+        ctx.lineTo(points[i][0], points[i][1]);
+      }
+      ctx.closePath();
+      if (fill) ctx.fill();
+      if (stroke) ctx.stroke();
+    }
+
     // ─── РЕАЛИСТИЧНЫЕ ЧЁРНЫЕ СИЛУЭТЫ КОРАБЛЕЙ ───
     class Ship {
       constructor() {
         let template = SHIP_TYPES[Math.floor(Math.random() * SHIP_TYPES.length)];
         this.type = template.type;
         this.width = template.width;
+        this.height = template.height;
         this.points = template.points;
         this.direction = Math.random() > 0.5 ? 1 : -1;
         this.speed = (template.speedBase + Math.random() * 0.3) * this.direction;
         
         this.x = this.direction === 1 ? cameraX - w/2 - 250 : cameraX + w/2 + 250;
-        this.y = HORIZON_Y + template.yOffset;
+        this.y = HORIZON_Y;
         this.active = true;
         this.wakeFrame = 0;
       }
@@ -339,108 +350,142 @@
       draw() {
         const sx = this.x - cameraX + w/2;
         const dir = this.direction;
+        const sy = this.y; // Водная линия
         
         ctx.save();
 
-        // Белая пенная волна у носа и кормы (как в оригинале)
-        ctx.strokeStyle = 'rgba(180, 230, 220, 0.4)';
+        // 1. Пенная волна у носа и след за кормой
+        ctx.strokeStyle = 'rgba(180, 240, 230, 0.45)';
         ctx.lineWidth = 1.2;
         ctx.beginPath();
-        const wakeLen = this.width * 0.7;
-        ctx.moveTo(sx - (this.width/2) * dir, this.y + 1);
-        ctx.lineTo(sx - (this.width/2 + wakeLen) * dir, this.y + 3 + Math.sin(this.wakeFrame) * 1.2);
+        const wakeLen = this.width * 0.6;
+        ctx.moveTo(sx - (this.width/2) * dir, sy + 1);
+        ctx.lineTo(sx - (this.width/2 + wakeLen) * dir, sy + 3 + Math.sin(this.wakeFrame) * 1.2);
         ctx.stroke();
 
-        // Тёмный силуэт корабля
-        ctx.fillStyle = '#0a1618';
-        ctx.strokeStyle = '#050d0e';
-        ctx.lineWidth = 1;
+        // Носовой ус (бурун)
         ctx.beginPath();
+        ctx.moveTo(sx + (this.width/2) * dir, sy + 1);
+        ctx.lineTo(sx + (this.width/2 - 12) * dir, sy + 3);
+        ctx.stroke();
+
+        // 2. Силуэт корабля (тёмно-угольный)
+        ctx.fillStyle = '#0a1618';
+        ctx.strokeStyle = '#020607';
+        ctx.lineWidth = 1;
 
         if (this.type === 'submarine') {
-          const r = 7;
-          ctx.moveTo(sx - this.width/2, this.y);
-          ctx.quadraticCurveTo(sx, this.y - r*2, sx + this.width/2, this.y);
-          ctx.lineTo(sx - this.width/2, this.y);
-          ctx.rect(sx - 9, this.y - 13, 18, 9);
-          ctx.moveTo(sx + 2 * dir, this.y - 13); ctx.lineTo(sx + 2 * dir, this.y - 22);
+          // ПОДВОДНАЯ ЛОДКА
+          const w2 = this.width / 2;
+          drawPoly([
+            [sx - w2, sy],
+            [sx - w2 + 10, sy - 4],
+            [sx, sy - 7],
+            [sx + w2 - 8, sy - 4],
+            [sx + w2, sy],
+            [sx - w2, sy]
+          ]);
+          // Рубка
+          ctx.fillRect(sx - 8, sy - 13, 16, 7);
+          // Перископ
+          ctx.fillRect(sx + 2 * dir, sy - 20, 2, 8);
         } 
         else if (this.type === 'destroyer') {
-          ctx.moveTo(sx - this.width/2, this.y);
-          ctx.lineTo(sx + this.width/2, this.y);
-          ctx.lineTo(sx + (this.width/2 - 14) * dir, this.y - 13);
-          ctx.lineTo(sx - (this.width/2 - 10) * dir, this.y - 11);
-          ctx.closePath();
-
-          ctx.rect(sx - 14, this.y - 23, 28, 11);
-          ctx.rect(sx - 7, this.y - 30, 14, 7);
-          
-          ctx.moveTo(sx, this.y - 30); ctx.lineTo(sx, this.y - 45);
-          ctx.moveTo(sx - 5, this.y - 40); ctx.lineTo(sx + 5, this.y - 40);
-          
-          ctx.rect(sx - 26 * dir, this.y - 24, 9, 13);
-
-          const gun1X = sx + 32 * dir;
-          ctx.rect(gun1X - 5, this.y - 17, 10, 5);
-          ctx.moveTo(gun1X, this.y - 14); ctx.lineTo(gun1X + 16 * dir, this.y - 17);
-
-          const gun2X = sx - 32 * dir;
-          ctx.rect(gun2X - 5, this.y - 15, 10, 5);
-          ctx.moveTo(gun2X, this.y - 12); ctx.lineTo(gun2X - 15 * dir, this.y - 15);
+          // ЭСМИНЕЦ
+          const w2 = this.width / 2;
+          // Корпус
+          drawPoly([
+            [sx - w2, sy + 1],
+            [sx - w2 + 8, sy - 8],
+            [sx + w2 - 15 * dir, sy - 9],
+            [sx + w2, sy + 1]
+          ]);
+          // Ходовой мостик (надстройка)
+          ctx.fillRect(sx - 15, sy - 18, 28, 10);
+          ctx.fillRect(sx - 8, sy - 25, 14, 7);
+          // Мачта с радаром
+          ctx.fillRect(sx - 1, sy - 38, 2, 13);
+          ctx.fillRect(sx - 6, sy - 35, 12, 2);
+          // Дымовая труба
+          drawPoly([
+            [sx - 24 * dir, sy - 9],
+            [sx - 21 * dir, sy - 20],
+            [sx - 13 * dir, sy - 20],
+            [sx - 16 * dir, sy - 9]
+          ]);
+          // Носовое орудие
+          ctx.fillRect(sx + 25 * dir - 5, sy - 14, 10, 5);
+          ctx.fillRect(sx + 25 * dir, sy - 12, 14 * dir, 2); // Ствол
+          // Кормовое орудие
+          ctx.fillRect(sx - 30 * dir - 5, sy - 13, 10, 5);
+          ctx.fillRect(sx - 30 * dir, sy - 11, -12 * dir, 2);
         }
         else if (this.type === 'cargo') {
-          ctx.moveTo(sx - this.width/2, this.y);
-          ctx.lineTo(sx + this.width/2, this.y);
-          ctx.lineTo(sx + (this.width/2 - 8) * dir, this.y - 15);
-          ctx.lineTo(sx - (this.width/2 - 8) * dir, this.y - 15);
-          ctx.closePath();
+          // ТРАНСПОРТ / ТАНКЕР
+          const w2 = this.width / 2;
+          // Корпус
+          drawPoly([
+            [sx - w2, sy + 1],
+            [sx - w2 + 6, sy - 11],
+            [sx + w2 - 10 * dir, sy - 11],
+            [sx + w2, sy + 1]
+          ]);
+          // Носовой бак
+          ctx.fillRect(sx + (w2 - 22) * dir, sy - 16, 16, 5);
+          // Кормовая надстройка
+          const aftX = sx - (w2 - 28) * dir;
+          ctx.fillRect(aftX - 12, sy - 25, 24, 14);
+          ctx.fillRect(aftX - 4, sy - 35, 8, 10); // Труба
+          // Грузовые мачты и крановые стрелы
+          const m1 = sx + 8 * dir;
+          ctx.fillRect(m1 - 1, sy - 30, 2, 19);
+          ctx.beginPath();
+          ctx.moveTo(m1, sy - 24); ctx.lineTo(m1 + 14 * dir, sy - 15);
+          ctx.stroke();
 
-          ctx.rect(sx + (this.width/2 - 24) * dir, this.y - 21, 16, 6);
-          
-          const aftX = sx - (this.width/2 - 32) * dir;
-          ctx.rect(aftX - 14, this.y - 30, 28, 15);
-          ctx.rect(aftX - 4, this.y - 42, 8, 12); 
-
-          const m1 = sx + 10 * dir;
-          ctx.moveTo(m1, this.y - 15); ctx.lineTo(m1, this.y - 36);
-          ctx.moveTo(m1, this.y - 28); ctx.lineTo(m1 + 14 * dir, this.y - 18);
-
-          const m2 = sx - 15 * dir;
-          ctx.moveTo(m2, this.y - 15); ctx.lineTo(m2, this.y - 36);
-          ctx.moveTo(m2, this.y - 28); ctx.lineTo(m2 - 14 * dir, this.y - 18);
+          const m2 = sx - 16 * dir;
+          ctx.fillRect(m2 - 1, sy - 30, 2, 19);
+          ctx.beginPath();
+          ctx.moveTo(m2, sy - 24); ctx.lineTo(m2 - 14 * dir, sy - 15);
+          ctx.stroke();
         }
         else if (this.type === 'battleship') {
-          ctx.moveTo(sx - this.width/2, this.y);
-          ctx.lineTo(sx + this.width/2, this.y);
-          ctx.lineTo(sx + (this.width/2 - 24) * dir, this.y - 17);
-          ctx.lineTo(sx - (this.width/2 - 18) * dir, this.y - 15);
-          ctx.closePath();
+          // ЛИНКОР
+          const w2 = this.width / 2;
+          // Мощный корпус
+          drawPoly([
+            [sx - w2, sy + 1],
+            [sx - w2 + 12, sy - 12],
+            [sx + w2 - 20 * dir, sy - 14],
+            [sx + w2, sy + 1]
+          ]);
+          // Главная надстройка
+          ctx.fillRect(sx - 30, sy - 24, 58, 11);
+          ctx.fillRect(sx - 16, sy - 36, 32, 12);
+          ctx.fillRect(sx - 8, sy - 48, 16, 12);
+          // Дальномерный столб
+          ctx.fillRect(sx - 1, sy - 58, 2, 10);
+          ctx.fillRect(sx - 7, sy - 55, 14, 2);
 
-          ctx.rect(sx - 32, this.y - 30, 64, 13);
-          ctx.rect(sx - 18, this.y - 45, 36, 15);
-          ctx.rect(sx - 9, this.y - 58, 18, 13);
-          
-          ctx.moveTo(sx, this.y - 58); ctx.lineTo(sx, this.y - 70);
-          ctx.moveTo(sx - 9, this.y - 66); ctx.lineTo(sx + 9, this.y - 66);
+          // Две наклоненные трубы
+          drawPoly([[sx - 24*dir, sy-24], [sx - 21*dir, sy-34], [sx - 15*dir, sy-34], [sx - 18*dir, sy-24]]);
+          drawPoly([[sx - 36*dir, sy-24], [sx - 33*dir, sy-32], [sx - 27*dir, sy-32], [sx - 30*dir, sy-24]]);
 
-          ctx.rect(sx - 26 * dir, this.y - 40, 8, 13);
-          ctx.rect(sx - 40 * dir, this.y - 36, 8, 11);
+          // Носовые трёхснарядные башни ГК
+          const b1 = sx + 38 * dir;
+          ctx.fillRect(b1 - 8, sy - 20, 16, 6);
+          ctx.fillRect(b1, sy - 18, 22 * dir, 2); // Стволы ГК
 
-          const b1 = sx + 42 * dir;
-          ctx.rect(b1 - 9, this.y - 24, 18, 8);
-          ctx.moveTo(b1, this.y - 20); ctx.lineTo(b1 + 22 * dir, this.y - 22);
+          const b2 = sx + 62 * dir;
+          ctx.fillRect(b2 - 8, sy - 18, 16, 5);
+          ctx.fillRect(b2, sy - 16, 20 * dir, 2);
 
-          const b2 = sx + 70 * dir;
-          ctx.rect(b2 - 9, this.y - 21, 18, 7);
-          ctx.moveTo(b2, this.y - 18); ctx.lineTo(b2 + 22 * dir, this.y - 20);
-
-          const b3 = sx - 60 * dir;
-          ctx.rect(b3 - 9, this.y - 21, 18, 7);
-          ctx.moveTo(b3, this.y - 18); ctx.lineTo(b3 - 22 * dir, this.y - 20);
+          // Кормовая башня
+          const b3 = sx - 55 * dir;
+          ctx.fillRect(b3 - 8, sy - 18, 16, 5);
+          ctx.fillRect(b3, sy - 16, -20 * dir, 2);
         }
 
-        ctx.fill();
-        ctx.stroke();
         ctx.restore();
       }
     }
@@ -452,18 +497,17 @@
         this.y = h;
         this.speedY = 5.0;
         this.active = true;
-        this.bulbs = []; // Горящие лампочки под стеклом
+        this.bulbs = []; 
       }
 
       update() {
         this.y -= this.speedY;
         
-        // Добавляем точки-лампочки по путям
         this.bulbs.push({ x: this.x, y: this.y, alpha: 1.0 });
         this.bulbs.forEach(b => b.alpha -= 0.04);
         this.bulbs = this.bulbs.filter(b => b.alpha > 0);
 
-        if (this.y <= HORIZON_Y + 4) {
+        if (this.y <= HORIZON_Y + 3) {
           this.checkCollision();
           this.active = false;
           activeTorpedo = null;
@@ -490,7 +534,6 @@
       }
 
       draw() {
-        // Оранжево-жёлтая цепочка лампочек (как в оригинале)
         this.bulbs.forEach(b => {
           const sx = b.x - cameraX + w/2;
           ctx.save();
@@ -511,192 +554,4 @@
       sound.playStartJingle();
 
       document.getElementById('startOverlay').style.display = 'none';
-      score = 0; torpedoes = 10; cameraX = 1500;
-      ships = []; explosions = []; activeTorpedo = null;
-      state = 'playing';
-      updateUI();
-      gameLoop();
-    }
-
-    function updateUI() {
-      document.getElementById('scoreDisplay').innerText = `ОЧКИ: ${score}`;
-      document.getElementById('torpedoDisplay').innerText = `ТОРПЕДЫ: ${torpedoes}`;
-    }
-
-    function fire() {
-      if (state !== 'playing' || activeTorpedo || torpedoes <= 0) return;
-      torpedoes--;
-      updateUI();
-      
-      sound.startTorpedoSound();
-      activeTorpedo = new Torpedo();
-      
-      document.getElementById('btnFire').classList.add('active-btn');
-      setTimeout(() => document.getElementById('btnFire').classList.remove('active-btn'), 180);
-
-      if (torpedoes <= 0) {
-        setTimeout(() => {
-          state = 'gameover';
-          document.getElementById('startOverlay').style.display = 'flex';
-          document.getElementById('startOverlay').innerHTML = `
-            <h1>ИГРА ОКОНЧЕНА<br><br><span style="font-size:1.5rem; color:#ffaa00">ОЧКИ: ${score}</span></h1>
-            <button class="start-btn" onclick="startGame()">СЫГРАТЬ ЕЩЕ</button>
-          `;
-        }, 2600); 
-      }
-    }
-
-    // ─── УПРАВЛЕНИЕ ───
-    const btnL = document.getElementById('btnLeft');
-    const btnR = document.getElementById('btnRight');
-    const btnF = document.getElementById('btnFire');
-
-    btnL.addEventListener('pointerdown', () => { turnSpeed = -4; btnL.classList.add('active-btn'); });
-    btnL.addEventListener('pointerup', () => { turnSpeed = 0; btnL.classList.remove('active-btn'); });
-    btnL.addEventListener('pointerleave', () => { turnSpeed = 0; btnL.classList.remove('active-btn'); });
-    
-    btnR.addEventListener('pointerdown', () => { turnSpeed = 4; btnR.classList.add('active-btn'); });
-    btnR.addEventListener('pointerup', () => { turnSpeed = 0; btnR.classList.remove('active-btn'); });
-    btnR.addEventListener('pointerleave', () => { turnSpeed = 0; btnR.classList.remove('active-btn'); });
-    
-    btnF.addEventListener('pointerdown', fire);
-
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'ArrowLeft' || e.key === 'a') { turnSpeed = -4; btnL.classList.add('active-btn'); }
-      if (e.key === 'ArrowRight' || e.key === 'd') { turnSpeed = 4; btnR.classList.add('active-btn'); }
-      if (e.key === ' ' || e.key === 'Enter') fire();
-    });
-    window.addEventListener('keyup', (e) => {
-      if (e.key === 'ArrowLeft' || e.key === 'a') { turnSpeed = 0; btnL.classList.remove('active-btn'); }
-      if (e.key === 'ArrowRight' || e.key === 'd') { turnSpeed = 0; btnR.classList.remove('active-btn'); }
-    });
-
-    function wrap(val, max) { return ((val % max) + max) % max; }
-
-    // ─── ОТРИСОВКА ОРИГИНАЛЬНОЙ ДИОРАМЫ (КАК НА ФОТО) ───
-    function gameLoop() {
-      if (state !== 'playing' && !activeTorpedo && explosions.length === 0) return;
-      requestAnimationFrame(gameLoop);
-      
-      cameraX += turnSpeed;
-      if (turnSpeed !== 0 && Math.random() > 0.8) sound.playMotor(); 
-
-      if (Math.random() < 0.015 && ships.length < 4) ships.push(new Ship());
-
-      ships.forEach(s => s.update());
-      ships = ships.filter(s => s.active);
-      if (activeTorpedo) activeTorpedo.update();
-
-      // 1. Бирюзовое небо с облаками
-      let skyGrad = ctx.createLinearGradient(0, 0, 0, HORIZON_Y);
-      skyGrad.addColorStop(0, '#2e6b72');
-      skyGrad.addColorStop(0.7, '#4e9297');
-      skyGrad.addColorStop(1, '#6bb2b5');
-      ctx.fillStyle = skyGrad;
-      ctx.fillRect(0, 0, w, HORIZON_Y);
-
-      // Рисуем полупрозрачные туманные облака
-      ctx.fillStyle = 'rgba(215, 245, 240, 0.25)';
-      ctx.beginPath();
-      let cloudX1 = wrap(500 - cameraX * 0.1, 2000) - 200;
-      ctx.arc(cloudX1, 40, 60, 0, Math.PI*2);
-      ctx.arc(cloudX1 + 50, 35, 45, 0, Math.PI*2);
-      ctx.arc(cloudX1 - 50, 45, 40, 0, Math.PI*2);
-      
-      let cloudX2 = wrap(1400 - cameraX * 0.1, 2000) - 200;
-      ctx.arc(cloudX2, 60, 80, 0, Math.PI*2);
-      ctx.arc(cloudX2 + 70, 50, 55, 0, Math.PI*2);
-      ctx.fill();
-
-      // Световое табло «ИГРА» в центре неба (как на фото)
-      ctx.save();
-      ctx.font = 'bold 16px "Courier New", monospace';
-      ctx.fillStyle = 'rgba(235, 255, 250, 0.85)';
-      ctx.shadowBlur = 10;
-      ctx.shadowColor = '#ffffff';
-      ctx.textAlign = 'center';
-      ctx.fillText('И Г Р А', w / 2, 35);
-      ctx.restore();
-
-      // 2. Коричнево-охристые скалы по бокам бухты (как на фото)
-      ctx.fillStyle = '#7a3e1d';
-      ctx.strokeStyle = '#4a2510';
-      ctx.lineWidth = 1.5;
-
-      // Скала СЛЕВА
-      let rockLeftX = wrap(100 - cameraX * 0.35, 2400) - 300;
-      ctx.beginPath();
-      ctx.moveTo(rockLeftX - 100, HORIZON_Y);
-      ctx.lineTo(rockLeftX + 40, HORIZON_Y - 110);
-      ctx.lineTo(rockLeftX + 90, HORIZON_Y - 70);
-      ctx.lineTo(rockLeftX + 150, HORIZON_Y - 140);
-      ctx.lineTo(rockLeftX + 220, HORIZON_Y);
-      ctx.closePath();
-      ctx.fill(); ctx.stroke();
-
-      // Скала СПРАВА
-      let rockRightX = wrap(1700 - cameraX * 0.35, 2400) - 300;
-      ctx.beginPath();
-      ctx.moveTo(rockRightX, HORIZON_Y);
-      ctx.lineTo(rockRightX + 80, HORIZON_Y - 130);
-      ctx.lineTo(rockRightX + 140, HORIZON_Y - 80);
-      ctx.lineTo(rockRightX + 210, HORIZON_Y - 160);
-      ctx.lineTo(rockRightX + 320, HORIZON_Y);
-      ctx.closePath();
-      ctx.fill(); ctx.stroke();
-
-      // 3. Бирюзовое море с волнами
-      let seaGrad = ctx.createLinearGradient(0, HORIZON_Y, 0, h);
-      seaGrad.addColorStop(0, '#2b6f72');
-      seaGrad.addColorStop(0.4, '#1b5053');
-      seaGrad.addColorStop(1, '#0c2d30');
-      ctx.fillStyle = seaGrad;
-      ctx.fillRect(0, HORIZON_Y, w, h - HORIZON_Y);
-
-      // Горизонтальные линии волн
-      ctx.strokeStyle = 'rgba(120, 200, 195, 0.25)';
-      ctx.lineWidth = 1;
-      for (let y = HORIZON_Y + 8; y < h; y += 12) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(w, y);
-        ctx.stroke();
-      }
-
-      // Линия горизонта
-      ctx.strokeStyle = 'rgba(160, 230, 220, 0.6)';
-      ctx.beginPath(); ctx.moveTo(0, HORIZON_Y); ctx.lineTo(w, HORIZON_Y); ctx.stroke();
-
-      // Корабли
-      ships.forEach(s => s.draw());
-      
-      // ТОРПЕДА (цепочка оранжевых ламп)
-      if (activeTorpedo) activeTorpedo.draw();
-
-      // Красные вспышки взрывов (как оригинальные красные лампы за стеклом)
-      explosions.forEach(exp => {
-        const sx = exp.x - cameraX + w/2;
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(sx, exp.y - 8, exp.radius * 2, 0, Math.PI * 2);
-        
-        if (exp.splash) {
-          ctx.fillStyle = `rgba(180, 240, 230, ${exp.life * 0.7})`;
-          ctx.fill();
-        } else {
-          // Яркий оранжево-красный свет вспышки лампы за кораблем
-          ctx.fillStyle = `rgba(255, 60, 20, ${exp.life})`;
-          ctx.shadowBlur = 30; 
-          ctx.shadowColor = '#ff2200';
-          ctx.fill();
-        }
-        
-        ctx.restore();
-        exp.radius += exp.splash ? 0.5 : 1.2;
-        exp.life -= 0.03;
-      });
-      explosions = explosions.filter(e => e.life > 0);
-    }
-  </script>
-</body>
-</html>
+      score = 0; torpedoes = 
